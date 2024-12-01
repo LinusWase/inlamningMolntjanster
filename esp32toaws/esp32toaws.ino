@@ -13,13 +13,16 @@ String THINGNAME = "";
 
 long sendInterval = 20000;
 
+WiFiClientSecure net = WiFiClientSecure();
+MQTTClient client = MQTTClient(1024); //Maximum size of packages recieved and published
+
 void connectToAws(){
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   THINGNAME = WiFi.macAddress();
   //Remove colon
-  THINGNAME.remove(":", "";)
+  THINGNAME.replace(":", "");
 
   Serial.println();
   Serial.print("MAC Address: ");
@@ -37,7 +40,7 @@ void connectToAws(){
   // Connect to AWS broker using port 8883
   client.begin(AWS_IOT_ENDPOINT, 8883, net);
 
-  while(!client.connest(THINGNAME.c_str())){
+  while(!client.connect(THINGNAME.c_str())){
     Serial.print("-");
     delay(1000);
   }
@@ -47,17 +50,73 @@ void connectToAws(){
     return;
   }
 
-  
-  Serial.println("")
+  client.subscribe(THINGNAME + AWS_IOT_SUBSCRIBE_TOPIC);
+
+  Serial.println("AWS IoT Connected successfully");
 }
 
+void setupShadow() {
+  client.subscribe("$aws/things/" + THINGNAME + "/shadow/get/accepted");
+  client.subscribe("$aws/things/" + THINGNAME + "/shadow/get/rejected");
+  //client.subscribe("$aws/things/" + THINGNAME + "/shadow/update/accepted");
+  client.subscribe("$aws/things/" + THINGNAME + "/shadow/update/delta");
 
-void setup() {
-  // put your setup code here, to run once:
+  client.publish("$aws/things/" + THINGNAME + "/shadow/get");
+}
 
+bool publishTelemetry(String payload){
+  Serial.print("Publishing: ");
+  Serial.println(payload);
+  return client.publish(THINGNAME + AWS_IOT_PUBLISH_TOPIC, payload);
+}
+
+void messageHandler(String &topic, String &payload){
+  Serial.println("incoming: " + topic + " - " + payload);
+
+  DynamicJsonDocument doc(512);
+  deserializeJson(doc, payload);
+
+  //Device shadow
+  if(topic.endsWith("/shadow/get/accepted")){
+    updateSettings(doc["state"]["desired"]);
+  } else if (topic.endsWith("/shadow/update/delta")){
+    updateSettings(doc["state"]);
+  }
+}
+
+void updateSettings(JsonDocument settingsObj) {
+  sendInterval = settingsObj["sendIntervalSeconds"].as<int>() * 1000;
+
+  JsonDocument docResponse;
+  docResponse["state"]["reported"] = settingsObj;
+  char jsonBuffer[512];
+  serializeJson(docResponse, jsonBuffer);
+
+  // report back to device shadow
+  Serial.print("Sending reported state to AWS: ");
+  serializeJson(docResponse, Serial);
+
+  client.publish("$aws/things/" + THINGNAME + "/shadow/update", jsonBuffer);
+}
+
+void setup(){
+  Serial.begin(115200);
+  delay(2000);
+  connectToAws();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  static unsigned long previousMillis = -sendInterval;
+
+  client.loop();
+
+  if(millis() - previousMillis >= sendInterval){
+    previousMillis = millis();
+
+    // bool sendResult = publishTelemetry("{\"temperature\":" + TODO + ",\"humidity\":" + TODO + "}");
+    //If program fail, restart
+    if (sendResult == 0)
+      ESP.restart();
+  }
 
 }

@@ -1,6 +1,6 @@
 #include <pgmspace.h>
-const char* ssid ="<Your SSID>";
-const char* password="Your Password";
+const char* ssid ="Linus iPhone";
+const char* password="Lajnus2003!";
 const char* AWS_IOT_ENDPOINT="xxxxxxxx.amazons.com";
 
 //Amazon Root CA 1 
