@@ -1,6 +1,7 @@
 //Include necessary libraries
 
 #include "secrets.h"
+#include "sensor.h"
 #include <WiFiClientSecure.h>
 #include <MQTTClient.h> //MQTT Library Source: https://github.com/256dpi/arduino-mqtt
 #include <ArduinoJson.h> //ArduinoJson Library Source: https://github.com/bblanchon/ArduinoJson
@@ -102,10 +103,14 @@ void updateSettings(JsonDocument settingsObj) {
 void setup(){
   Serial.begin(115200);
   delay(2000);
-  connectToAws();
+  //connectToAws();
+  initSensor();
 }
 
 void loop() {
+  delay(2000);
+  float temperature = getTemperature();
+  float humidity = getHumidity();
   static unsigned long previousMillis = -sendInterval;
 
   client.loop();
@@ -113,10 +118,10 @@ void loop() {
   if(millis() - previousMillis >= sendInterval){
     previousMillis = millis();
 
-    // bool sendResult = publishTelemetry("{\"temperature\":" + TODO + ",\"humidity\":" + TODO + "}");
+    bool sendResult = publishTelemetry("{\"temperature\":" + String(temperature) + ",\"humidity\":" + String(humidity) + "}");
     //If program fail, restart
-    if (sendResult == 0)
-      ESP.restart();
+    //if (GNDsendResult == 0)
+    //  ESP.restart();
   }
 
 }
