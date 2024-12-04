@@ -1,22 +1,21 @@
-// sensor.h
 #include "DHT.h"
 
 #define DHTPIN 4      // Digital pin 4
-#define DHTTYPE DHT11 // DHT 11
+#define DHTTYPE DHT11
 
 DHT dht(DHTPIN, DHTTYPE);
 
-// Initialisera DHT-sensorn
+// Initialize DHT sensor
 void initSensor() {
   dht.begin();
 }
 
-// Hämta temperatur
+//Function to get temperature
 float getTemperature() {
   return dht.readTemperature();
 }
 
-// Hämta luftfuktighet
+//Function to get humidity
 float getHumidity() {
   return dht.readHumidity();
 }
